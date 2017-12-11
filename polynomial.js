@@ -408,6 +408,24 @@
     return new Polynomial(ret);
   };
 
+  /**
+   * Return the 'reverse' of the polynomial, where the coefficients
+   * appear in opposite order; i.e. a[i] -> a[n-i]
+   *
+   * @returns {Polynomial}
+   */
+  Polynomial.prototype['reverse'] = function() {
+
+    var ret = {};
+    var poly = this['coeff'];
+    var n = this.degree();
+
+    for (var i in poly) {
+      ret[n - i] = poly[i];
+    }
+    return new Polynomial(ret);
+  };
+
   function lc(poly) {
 
     var max = null;
