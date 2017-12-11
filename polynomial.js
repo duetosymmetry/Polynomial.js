@@ -426,6 +426,30 @@
     return new Polynomial(ret);
   };
 
+  /**
+   * Numerically evaluate the polynomial at a specific point x by
+   * using Horner's method.
+   * See e.g. https://en.wikipedia.org/wiki/Horner%27s_method
+   *
+   * @param {number} x The point where to evaluate this polynomial
+   * @returns {number}
+   */
+  Polynomial.prototype['eval'] = function(x) {
+
+    var poly = this['coeff'];
+    var n = this.degree();
+    var ret = poly[n];
+
+    for (var i = n-1; i >= 0; i--) {
+      ret = FIELD['mul'](ret, x);
+      if (!FIELD['empty'](poly[i])) {
+        ret = FIELD['add'](ret, poly[i]);
+      };
+    };
+
+    return ret;
+  };
+
   function lc(poly) {
 
     var max = null;
