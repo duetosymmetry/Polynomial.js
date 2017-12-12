@@ -764,11 +764,6 @@
     return new Polynomial(coeff);
   }
 
-  function isNull(r) {
-
-    return degree(r) === Number.NEGATIVE_INFINITY;
-  }
-
   /**
    * Helper method to stringify
    * 
@@ -1035,6 +1030,11 @@
 
     return degree(this['coeff']);
   };
+
+  function isNull(r) {
+
+    return degree(r) === Number.NEGATIVE_INFINITY;
+  }
 
   /**
    * Set the field globally
