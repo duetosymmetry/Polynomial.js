@@ -785,6 +785,230 @@
     return new Polynomial(coeff);
   }
 
+  /******************************************************************/
+  /* Complex root-finding using Aberth's method
+   * Much of this follows the netlib FORTRAN implementation,
+   * see http://www.netlib.org/numeralgo/na10
+   * The starting roots and stopping conditions come from the paper
+   * "Numerical computation of polynomial zeros by means of Aberth's method"
+   * Bini, D.A. Numer Algor (1996) 13: 179.
+   * https://doi.org/10.1007/BF02207694
+   */
+
+  /**
+   * Helper function for Aberth's method of root finding,
+   * Aberth correction (improves Newton iteration)
+   *
+   * @param {Array<Object>} roots Current root estimates
+   * @param {number} j Index into roots for correction update
+   * @returns {Object} Aberth's correction, sum of 1/(z_j-z_i)
+   */
+  function Aberth(roots, j) {
+    var degree = roots.length;
+    var zj = roots[j];
+    var Abcorr = Complex.ZERO;
+
+    for (var i=0; i<degree; i++) {
+
+      if (i==j)
+        continue;
+
+      Abcorr = Abcorr.add( zj.sub(roots[i]).inverse() );
+    };
+
+    return Abcorr;
+  }
+
+  /**
+   * Helper function for Aberth's method of root finding,
+   * Newton correction.
+   *
+   * @param {Array<Object>} poly Coefficients of P(x)
+   * @param {Array<number>} apoly upper bounds on the backward
+   *                              perturbation on the coefficients of
+   *                              P(x) when applying Ruffini-Horner's
+   *                              rule
+   * @param {Array<number>} apolyr upper bounds on the backward
+   *                               perturbations on the coefficients
+   *                               of P(x)
+   * @param {Object} z value at which the Newton correction is computed
+   * @param {number} radius TODO
+   * @param {boolean} again TODO
+   * @returns {Object} TODO {'corr', 'again', 'radius'}
+   */
+  function Newton(poly, apoly, apolyr, z, radius, again) {
+    var degree = poly.length - 1;
+
+    var az = z.abs();
+    var corr;
+
+    if (az <= 1.) {
+      var p = poly[degree];
+      var p1 = p;
+      var ap = apoly[degree];
+
+      /* This is a slightly more efficient way to compute
+       * P(z) and P'(z) at the same time.
+       */
+      for (var i = degree-1; i >= 1; i--) {
+        p = p.mul(z).add(poly[i]);
+        p1 = p1.mul(z).add(p);
+        ap = ap*az + apoly[i];
+      };
+      p = p.mul(z).add(poly[0]);
+      ap = ap*az + apoly[0];
+
+      corr = p.div(p1);
+      var absp = p.abs();
+
+      again = (absp > (Number.MIN_VALUE + ap));
+      if (!again) {
+        radius = degree * (absp + ap)/p1.abs();
+      };
+
+    } else { /* |z|>1 */
+      var zi = z.inverse();
+      var azi = 1/az;
+      var p = poly[0];
+      var p1 = p;
+      var ap = apolyr[degree];
+
+      /* This is a slightly more efficient way to compute
+       * P(z) and P'(z) at the same time.
+       */
+      for (var i = degree-1; i>=1; i--) {
+        p = p.mul(zi).add(poly[degree-i]);
+        p1 = p1.mul(zi).add(p);
+        ap = ap*azi+apolyr[i];
+      };
+      p = p.mul(zi).add(poly[degree]);
+      ap = ap*azi + apolyr[0];
+
+      var absp = p.abs();
+      again = (absp > (Number.MIN_VALUE + ap));
+
+      var ppsp = p.mul(z).div(p1);
+      var den = ppsp.mul(degree).sub(Complex.ONE);
+      corr = z.mul(ppsp.div(den));
+
+      if (!again) {
+        radius = ppsp.abs() + (ap*az)/p1.abs();
+        radius = degree*radius/den.abs();
+        radius = radius*az;
+      };
+
+    };
+
+    return {'corr': corr, 'again': again, 'radius': radius};
+
+  }
+
+  /**
+   * Perform the actual Aberth iteration
+   *
+   * @param {Array<Object>} poly Array of Complex polynomial coefficients
+   * @param {number} nitmax The max number of allowed iterations
+   * @param {Array<Object>} root Starting guesses for roots
+   * @return {Object} TODO {root, radius, err, iter}
+   */
+  function AberthIterate(poly, nitmax, root) {
+    var eps = Number.EPSILON;
+    var big = Number.MAX_VALUE;
+    var small = Number.MIN_VALUE;
+
+    var deg = poly.length - 1;
+
+    if (Complex.ZERO.equals(poly[deg])) {
+      throw('Inconsistent data: the leading coefficient is zero');
+    }
+    if (Complex.ZERO.equals(poly[0])) {
+      // TODO: This is from Bini's implementation; but we could simply
+      // identify that we have a certain number of roots at the
+      // origin and continue.
+      throw('The constant term is zero: deflate the polynomial');
+    }
+
+    var amax = 0.;
+    var apoly = new Array(deg+1), apolyr = new Array(deg+1);
+    for (var i=0; i<=deg; i++) {
+      apoly[i] = poly[i].abs();
+      amax = Math.max(amax, apoly[i]);
+      apolyr[i] = apoly[i];
+    }
+    if (amax >= (big/(deg+1)))
+      console.warn('WARNING: COEFFICIENTS TOO BIG, OVERFLOW IS LIKELY');
+
+    for (var i=0; i<=deg; i++) {
+      // the magic numbers on the RHS come from Bini
+      apolyr[deg-i] = eps*apoly[i]*(3.8*(deg-i)+1.);
+      apoly[i] = eps*apoly[i]*(3.8*i+1.);
+    };
+
+    if ((apoly[0] == 0) || (apoly[deg] == 0)) {
+      console.warn('WARNING: THE COMPUTATION OF SOME INCLUSION RADIUS MAY FAIL. THIS IS REPORTED BY RADIUS=0');
+    }
+
+    var err = new Array(deg), radius = new Array(deg);
+
+    for (var i=0; i<deg; i++) {
+      err[i] = true;
+      radius[i] = 0.;
+    }
+
+    if (nitmax === undefined)
+      nitmax = 30;
+
+    // Start Aberth's iterations
+
+    var iter, nzeros = 0;
+
+    // Label for breaking if we converge before nitmax
+    iterloop:
+    for (iter = 1; iter <= nitmax; iter++) {
+      for (var i=0; i < deg; i++) {
+        if (err[i]) {
+          var newt = Newton(poly, apoly, apolyr, root[i], radius[i], err[i]);
+          // unpack results (I don't want to be FORTRAN-y)
+          var corr = newt['corr'];
+          err[i] = newt['again'];
+          if (!err[i]) radius[i] = newt['radius'];
+          if (err[i]) {
+            var Abcorr = Aberth(root, i);
+            root[i] = root[i].sub(corr.div(Complex.ONE.sub(corr.mul(Abcorr))));
+          } else {
+            nzeros++;
+            if (nzeros == deg) break iterloop;
+          }
+        }
+      }
+    }
+    return {'root': root, 'radius': radius, 'err': err, 'iter': iter};
+  }
+
+  /**
+   * complexRoots interface. For testing right now. TODO
+   */
+  Polynomial.prototype['complexRoots'] = function(root) {
+    var coeffs = this['coeff'];
+    var deg = degree(coeffs);
+    var poly = new Array(deg+1), croot = new Array(deg);
+
+    for (var i=0; i<=deg; i++) {
+      if ( coeffs.hasOwnProperty(i) ) {
+        poly[i] = Complex(coeffs[i]);
+      } else {
+        poly[i] = Complex.ZERO;
+      }
+    }
+
+    for (var i=0; i<deg; i++)
+      croot[i] = new Complex(root[i]);
+
+    return AberthIterate(poly, 30, root);
+  }
+
+  /******************************************************************/
+
   /**
    * Helper method to stringify
    * 
