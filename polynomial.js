@@ -738,6 +738,25 @@
   Polynomial.prototype['result'] = Polynomial.prototype['eval'];
 
   /**
+   * Helper for recursively forming polynomials from roots
+   *
+   * @returns {Polynomial}
+   */
+  function productHelper(roots) {
+    switch (roots.length) {
+      case 0:
+        return new Polynomial(FIELD['parse'](1.));
+      case 1:
+        return new Polynomial([ FIELD['mul'](roots[0], -1.), 1.]);
+      default: // recurse
+        var nLeft = Math.floor(roots.length/2);
+        var left  = roots.slice(0, nLeft),
+            right = roots.slice(nLeft, roots.length);
+      return productHelper(left)['mul'](productHelper(right));
+    }
+  }
+
+  /**
    * Form a (monic) polynomial out of an array of roots
    *
    * @param {Array<number>} roots - Array of roots
@@ -754,24 +773,6 @@
 
     // First we construct the depressed polynomial with a recursive
     // strategy (this minimizes the number of multiplications)
-    var pOne = new Polynomial(FIELD['parse'](1.));
-
-    var productHelper;
-
-    productHelper = function(r) {
-      switch (r.length) {
-      case 0:
-        return pOne;
-      case 1:
-        return new Polynomial([ FIELD['mul'](r[0], -1.), 1.]);
-      default: // recurse
-        var nLeft = Math.floor(r.length/2);
-        var left  = r.slice(0, nLeft),
-            right = r.slice(nLeft, r.length);
-        return productHelper(left).mul( productHelper(right) );
-      }
-    };
-
     var dep = productHelper(nonZeroRoots);
 
     // Now raise the order by including numZeros zeros
