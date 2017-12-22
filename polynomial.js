@@ -851,14 +851,14 @@
        * P(z) and P'(z) at the same time.
        */
       for (var i = degree-1; i >= 1; i--) {
-        p = p.mul(z).add(poly[i]);
-        p1 = p1.mul(z).add(p);
+        p = p['mul'](z)['add'](poly[i]);
+        p1 = p1['mul'](z)['add'](p);
         ap = ap*az + apoly[i];
       };
-      p = p.mul(z).add(poly[0]);
+      p = p['mul'](z)['add'](poly[0]);
       ap = ap*az + apoly[0];
 
-      corr = p.div(p1);
+      corr = p['div'](p1);
       var absp = p.abs();
 
       again = (absp > (Number.MIN_VALUE + ap));
@@ -877,19 +877,19 @@
        * P(z) and P'(z) at the same time.
        */
       for (var i = degree-1; i>=1; i--) {
-        p = p.mul(zi).add(poly[degree-i]);
-        p1 = p1.mul(zi).add(p);
+        p = p['mul'](zi)['add'](poly[degree-i]);
+        p1 = p1['mul'](zi)['add'](p);
         ap = ap*azi+apolyr[i];
       };
-      p = p.mul(zi).add(poly[degree]);
+      p = p['mul'](zi)['add'](poly[degree]);
       ap = ap*azi + apolyr[0];
 
       var absp = p.abs();
       again = (absp > (Number.MIN_VALUE + ap));
 
-      var ppsp = p.mul(z).div(p1);
-      var den = ppsp.mul(degree).sub(Complex.ONE);
-      corr = z.mul(ppsp.div(den));
+      var ppsp = p['mul'](z)['div'](p1);
+      var den = ppsp['mul'](degree)['sub'](Complex.ONE);
+      corr = z['mul'](ppsp['div'](den));
 
       if (!again) {
         radius = ppsp.abs() + (ap*az)/p1.abs();
@@ -918,10 +918,10 @@
 
     var deg = poly.length - 1;
 
-    if (Complex.ZERO.equals(poly[deg])) {
+    if (Complex.ZERO['equals'](poly[deg])) {
       throw('Inconsistent data: the leading coefficient is zero');
     }
-    if (Complex.ZERO.equals(poly[0])) {
+    if (Complex.ZERO['equals'](poly[0])) {
       // TODO: This is from Bini's implementation; but we could simply
       // identify that we have a certain number of roots at the
       // origin and continue.
@@ -974,7 +974,7 @@
           if (!err[i]) radius[i] = newt['radius'];
           if (err[i]) {
             var Abcorr = Aberth(root, i);
-            root[i] = root[i].sub(corr.div(Complex.ONE.sub(corr.mul(Abcorr))));
+            root[i] = root[i]['sub'](corr['div'](Complex.ONE['sub'](corr['mul'](Abcorr))));
           } else {
             nzeros++;
             if (nzeros == deg) break iterloop;
