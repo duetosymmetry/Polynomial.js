@@ -201,6 +201,27 @@
   Polynomial.prototype['coeff'] = {};
 
   /**
+   * Return a dense array of coefficients
+   *
+   * @type {Array<Object>} Length n+1 array of coefficients
+   */
+  Polynomial.prototype['coeffArray'] = function() {
+    var coeffs = this['coeff'];
+    var deg = degree(coeffs);
+    var coeffArr = new Array(deg+1);
+
+    for (var i=0; i<=deg; i++) {
+      if ( coeffs.hasOwnProperty(i) ) {
+        coeffArr[i] = coeffs[i];
+      } else {
+        coeffArr[i] = 0.0;
+      }
+    }
+
+    return coeffArr;
+  };
+
+  /**
    * Combines the keys of two objects
    * 
    * @param {Object} a
