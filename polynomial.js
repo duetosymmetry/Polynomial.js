@@ -987,6 +987,38 @@
   }
 
   /**
+   * Helper function for upperConvexHull, which itself is a helper
+   * function for choosing initial guess of roots.
+   */
+  function cross(a, b, o) {
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  }
+
+  /**
+   * Upper convex hull helper function. For helping to choose initial guess.
+   * This is Andrew's monotone chain convex hull algorithm (see e.g.
+   * https://en.wikibooks.org/wiki/Algorithm_Implementation/Geometry/Convex_hull/Monotone_chain )
+   * which works in O(n log n) time on a set of 2-d points. It is
+   * dominated by the time complexity of sorting the points by the
+   * first coordinate.
+   */
+  function upperConvexHull(points) {
+
+    points.sort(function cmpX(a, b) { return a[0] - b[0]; });
+
+    var upper = [];
+    for (var i = 0; i < points.length; i++) {
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], points[i]) >= 0) {
+        upper.pop();
+      }
+      upper.push(points[i]);
+    }
+
+    return upper;
+
+  }
+
+  /**
    * complexRoots interface. For testing right now. TODO
    */
   Polynomial.prototype['complexRoots'] = function(root) {
